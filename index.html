@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Descansos de Ribadesella</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;background:#dde3ea}
+.hdr{background:linear-gradient(135deg,#12304c,#1f527a);color:#fff;padding:7px 14px;display:flex;align-items:center;gap:14px;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.4);z-index:10}
+.hdr-t{font-size:15px;font-weight:700;letter-spacing:.8px}
+.hdr-s{font-size:9px;color:#85b4d8;margin-top:1px}
+.mnav{display:flex;align-items:center;gap:5px;margin-left:auto}
+.mnav button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;cursor:pointer;padding:3px 11px;border-radius:4px;font-size:13px;transition:background .12s}
+.mnav button:hover{background:rgba(255,255,255,.3)}
+.mlbl{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:4px 16px;font-size:13px;font-weight:700;min-width:170px;text-align:center}
+.wrap{display:flex;height:calc(100% - 52px);overflow:hidden}
+/* LEFT */
+.lpan{width:195px;flex-shrink:0;background:#173048;display:flex;flex-direction:column;border-right:2px solid #0e2030}
+.lpan-h{background:rgba(0,0,0,.3);color:#80b2d5;padding:6px 8px;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;text-align:center;border-bottom:1px solid rgba(255,255,255,.07)}
+.lscroll{flex:1;overflow-y:auto;padding:5px}
+.lscroll::-webkit-scrollbar{width:4px}
+.lscroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+.lname{display:flex;align-items:center;border-radius:4px;padding:3px 5px 3px 0;margin:2px 0;font-size:10px;transition:background .13s;user-select:none;cursor:default;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);overflow:hidden}
+.lname.candrag{cursor:grab}.lname.candrag:hover{background:rgba(255,255,255,.17)}
+.lname.draggo{opacity:.3}
+.lbar{width:5px;align-self:stretch;min-height:22px;margin-right:6px;flex-shrink:0}
+.lntext{flex:1;color:#cde4f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px}
+.lname.candrag:hover .lntext{color:#fff}
+.lswatch{width:13px;height:13px;border-radius:50%;flex-shrink:0;margin-left:5px;cursor:pointer!important;border:1.5px solid rgba(255,255,255,.3);transition:transform .12s}
+.lswatch:hover{transform:scale(1.4);border-color:rgba(255,255,255,.9)!important}
+/* CENTER */
+.cpan{flex:1;overflow:auto;padding:10px 12px}
+.cpan::-webkit-scrollbar{width:6px;height:6px}
+.cpan::-webkit-scrollbar-thumb{background:#b8c4cf;border-radius:3px}
+/* RIGHT */
+.rpan{width:155px;flex-shrink:0;background:#f1f4f7;border-left:2px solid #d8e0e8;display:flex;flex-direction:column;padding:8px 7px;gap:5px;overflow-y:auto}
+.rsec{font-size:8px;font-weight:700;color:#85a0b8;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #d0dae4;padding-bottom:3px;margin-top:6px}
+.rsec:first-child{margin-top:0}
+.rbtn{width:100%;padding:7px 4px;border:none;border-radius:5px;cursor:pointer;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;transition:all .13s;text-align:center}
+.rb-blue{background:#2565a0;color:#fff}.rb-blue:hover{background:#2f78bc}
+.rb-red{background:#b83428;color:#fff}.rb-red:hover{background:#d04030}
+.rb-save{background:#5a3d8a;color:#fff}.rb-save:hover{background:#6d4da8}
+.rb-dl{background:#1a7a4a;color:#fff}.rb-dl:hover{background:#22965a}
+.rb-tog{background:#aab5c0;color:#fff}
+.rb-tog.on{background:#d06515;box-shadow:0 0 0 2px #f09030}
+.mtip{font-size:8.5px;color:#80a0b8;line-height:1.55;padding:5px;background:#e8eef5;border-radius:4px}
+/* WEEK */
+.wblk{background:#fff;border:1px solid #c2ccd6;border-radius:6px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);transition:box-shadow .15s}
+.wblk.wkdrag{cursor:grab}.wblk.wkdrag:hover{box-shadow:0 5px 18px rgba(0,0,0,.15)}
+.wblk.dragging{opacity:.3}
+.whdr{display:flex;align-items:flex-start;background:linear-gradient(90deg,#12304c,#1c4870);color:#fff;padding:5px 8px;gap:8px;min-height:38px}
+.wlet{background:#c86012;color:#fff;font-weight:700;font-size:17px;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 5px rgba(0,0,0,.35)}
+.rcbar{flex:1;font-size:9px;line-height:1.8;color:#a8c8e8;word-break:break-word}
+.rci{display:inline-block;margin-right:10px;white-space:nowrap}
+.rcn{font-weight:700;color:#ffd060;font-size:10px}
+.rcnone{font-style:italic;opacity:.5}
+.wtbl{width:100%;border-collapse:collapse;min-width:420px}
+.wtbl th{background:#1c3e60;color:#fff;text-align:center;padding:4px 3px;font-size:8.5px;border:1px solid #12304c}
+.wtbl th .dn{font-size:16px;font-weight:700;display:block;line-height:1.1}
+.wtbl th .dn.xm{color:#6898b8}
+.wtbl th.wknd{background:#14334e}
+.wtbl td{border:1px solid #ccd4de;vertical-align:top;padding:3px;min-width:72px;min-height:44px;transition:background .1s}
+.wtbl td.wknd{background:#fdf8f0}
+.wtbl td.xmon{background:#f5f7fa}
+.wtbl td.dov{background:#d5f0d5!important;outline:2px dashed #28a660;outline-offset:-2px}
+.aname{display:flex;align-items:center;justify-content:space-between;padding:2px 5px;border-radius:3px;margin:1px 0;font-size:9px;white-space:nowrap;font-weight:500;transition:opacity .15s}
+.aname.chip-drag{cursor:grab}
+.aname.chip-drag:hover{filter:brightness(1.12)}
+.arm{cursor:pointer;margin-left:4px;opacity:.7;font-size:12px;line-height:1;flex-shrink:0}
+.arm:hover{opacity:1}
+.dzw{height:5px;border-radius:4px;transition:all .18s;margin:-2px 0}
+.dzw.on{height:30px;background:rgba(208,101,21,.35);border:2px dashed #d06515;margin:3px 0;border-radius:5px}
+/* MODAL */
+.mbg{position:fixed;inset:0;background:rgba(0,0,0,.52);display:flex;align-items:center;justify-content:center;z-index:999}
+.mbox{background:#fff;border-radius:8px;padding:20px;width:300px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.mbox h3{font-size:13px;color:#12304c;margin-bottom:12px;border-bottom:1px solid #dce6f0;padding-bottom:8px}
+.mbox p{font-size:11px;color:#445;margin-bottom:14px;line-height:1.6}
+.mbox input[type=text]{width:100%;padding:7px 9px;border:1px solid #bdc8d4;border-radius:4px;font-size:12px;margin-bottom:8px;outline:none}
+.mbox input[type=text]:focus{border-color:#2565a0}
+.mbox select{width:100%;padding:5px 7px;border:1px solid #bdc8d4;border-radius:4px;font-size:10.5px;height:130px;margin-bottom:10px;outline:none}
+.mlabel{font-size:10px;color:#445;margin-bottom:4px;display:block;font-weight:600}
+.crow{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.crow input[type=color]{width:42px;height:32px;border:1px solid #bdc8d4;border-radius:4px;cursor:pointer;padding:2px}
+.cprev{font-size:10px;padding:4px 10px;border-radius:3px;border:1px solid rgba(0,0,0,.1);font-weight:600}
+.mbtns{display:flex;gap:8px}
+.mbtns button{flex:1;padding:8px;border:none;border-radius:5px;cursor:pointer;font-size:11px;font-weight:700}
+.mok{background:#2565a0;color:#fff}.mok:hover{background:#2f78bc}
+.mok.red{background:#b83428;color:#fff}.mok.red:hover{background:#d04030}
+.mcan{background:#95a8b5;color:#fff}.mcan:hover{background:#7f95a5}
+/* VALIDACIÓN */
+.val-sum{font-size:11px;color:#5c3b00;margin-bottom:10px;padding:7px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:5px;font-weight:500;line-height:1.5}
+.val-scroll{max-height:270px;overflow-y:auto;border:1px solid #dce6f0;border-radius:5px}
+.val-scroll::-webkit-scrollbar{width:4px}
+.val-scroll::-webkit-scrollbar-thumb{background:#c0cad4;border-radius:2px}
+.val-row{padding:8px 10px;border-bottom:1px solid #eef2f7;display:flex;gap:9px;align-items:flex-start}
+.val-row:last-child{border-bottom:none}
+.val-badge{padding:2px 7px;border-radius:10px;font-size:8.5px;font-weight:700;flex-shrink:0;white-space:nowrap;margin-top:2px;letter-spacing:.2px}
+.val-probs{flex:1}
+.val-prob{font-size:10px;color:#445;margin:2px 0;padding-left:12px;position:relative;line-height:1.5}
+.val-prob::before{content:'›';position:absolute;left:2px;color:#c09000;font-weight:700}
+/* TOAST */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(90px);background:#12304c;color:#fff;padding:8px 22px;border-radius:20px;font-size:11px;font-weight:600;transition:transform .3s ease;z-index:2000;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.35);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+/* PRINT */
+@media print{
+  html,body{height:auto;overflow:visible;background:#fff}
+  .hdr,.lpan,.rpan,.dzw{display:none!important}
+  .wrap{height:auto;overflow:visible}
+  .cpan{overflow:visible;padding:2px}
+  .print-hdr{display:block!important}
+  .wblk{break-inside:avoid;box-shadow:none;border:1px solid #999;margin-bottom:6px}
+  .whdr,.wtbl th,.aname,.wtbl td.wknd{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .arm{display:none}
+}
+.print-hdr{display:none}
+</style>
+</head>
+<body>
+
+<div class="print-hdr">
+  <div style="text-align:center;padding:8px 0 14px">
+    <div style="font-size:16px;font-weight:bold;letter-spacing:.5px">CUADRANTE DE DESCANSOS — <span id="ptitle"></span></div>
+    <div style="font-size:11px;color:#555;margin-top:3px">LIMPIEZA RIBADESELLA • FCC DE RIBADESELLA &nbsp;|&nbsp; Semanas completas LUN–DOM</div>
+  </div>
+</div>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-t">📋 DESCANSOS DE RIBADESELLA</div>
+    <div class="hdr-s">LIMPIEZA RIBADESELLA • FCC DE RIBADESELLA</div>
+  </div>
+  <div class="mnav">
+    <button onclick="chY(-1)" title="Año anterior">«</button>
+    <button onclick="chM(-1)" title="Mes anterior">‹</button>
+    <div class="mlbl" id="mlbl">—</div>
+    <button onclick="chM(1)" title="Mes siguiente">›</button>
+    <button onclick="chY(1)" title="Año siguiente">»</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="lpan">
+    <div class="lpan-h">👷 Trabajadores</div>
+    <div class="lscroll" id="lnames"></div>
+  </div>
+  <div class="cpan" id="cpan"></div>
+  <div class="rpan">
+    <div class="rsec">Gestión</div>
+    <button class="rbtn rb-blue" onclick="openAdd()">➕ Añadir Nombre</button>
+    <button class="rbtn rb-red"  onclick="openRemove()">🗑 Eliminar Nombre</button>
+    <button class="rbtn rb-save" onclick="validateAndSave()">💾 Guardar</button>
+    <button class="rbtn rb-dl"   onclick="downloadExcel()">⬇ Descargar</button>
+    <div class="rsec">Modos de Edición</div>
+    <button class="rbtn rb-tog" id="btnN" onclick="setMode('names')">🖱 Arrastrar Nombres</button>
+    <button class="rbtn rb-tog" id="btnW" onclick="setMode('weeks')">↕ Mover Semanas</button>
+    <div class="mtip" id="mtip">Activa un modo para editar el cuadrante.</div>
+  </div>
+</div>
+
+<div class="mbg" id="mbg" style="display:none"><div class="mbox" id="mbox"></div></div>
+<div class="toast" id="toast"></div>
+<input type="color" id="cpick" style="position:fixed;opacity:0;pointer-events:none;top:0;left:0" onchange="applyWorkerColor(this.value)">
+
+<script>
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+const LETS='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+const DCOLORS={
+  'YURY PANKOTAY':'#FFC000','JUAN LUIS MARTINEZ BLANCO':'#FFC000','JUAN JOSE RODRIGUEZ PUERTO':'#FFC000',
+  'SAMUEL VILA PEREZ':'#FFC000','ANDRES CALLEJA DEL CAMPO':'#FFC000','JOSE LUIS ACEVEDO PARAJON':'#FFC000',
+  'CRISTOFER FERNANDEZ ALVAREZ':'#FFC000','RECOGIDA RURAL DIFICIL ACCESO':'#FFC000','JULIO PENDAS SANCHEZ':'#FFC000',
+  'JUAN FERNANDEZ PEÑA':'#FFC000','ARIEL MARTINEZ CORTES':'#FFC000','NOEL MORATO MUÑOZ':'#FFC000',
+  'JOSE IGNACIO RUBIO QUESADA':'#FFC000','SECUNDINO SUAREZ RIVERO':'#FFC000','JAVIER PEREZ LEAL':'#FFC000',
+  'GABRIEL NUÑEZ TORIBIO':'#FFC000','AARON GONZALEZ BRAÑA':'#FFC000','JESUS JIMENEZ ALVAREZ':'#FFC000',
+  'ANTONIO ARDISANA RIVERO':'#FFC000','THOMAS FERREIRA BERNASCONI':'#FFC000','EDUARDO MANUEL ALVAREZ AVIN':'#FFC000',
+  'FRANCISCO CAYADO ALONSO':'#FFC000','GINES RUIZ ESCOLANO':'#FFC000','CLAUDIA SERRANO VARELA':'#FFC000',
+  'ALVARO VALLE RODRIGUEZ':'#FFC000'
+};
+
+const DSCHED={};
+
+let cy=2026,cm=5,mode='';
+let drag={},colorEditWorker=null;
+let workers=Object.keys(DCOLORS);
+let workerColors={...DCOLORS};
+let sched=JSON.parse(JSON.stringify(DSCHED));
+let wOrders={};
+
+// ── Color helpers ──
+function tc(hex){
+  if(!hex||!/^#[0-9a-fA-F]{6}$/.test(hex)) return '#fff';
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return (0.299*r+0.587*g+0.114*b)/255>0.55?'#111':'#fff';
+}
+function wc(n){return workerColors[n]||'#4472C4'}
+
+// ── Date helpers ──
+function ds(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
+function dp(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+function getWeeks(y,m){
+  const first=new Date(y,m,1),last=new Date(y,m+1,0);
+  let start=new Date(first);const dow=start.getDay();
+  start.setDate(start.getDate()+(dow===0?-6:1-dow));
+  const weeks=[];let cur=new Date(start);
+  while(cur<=last){
+    const wk=[];for(let i=0;i<7;i++){const dt=new Date(cur);dt.setDate(dt.getDate()+i);wk.push(ds(dt));}
+    weeks.push(wk);cur.setDate(cur.getDate()+7);
+  }
+  return weeks;
+}
+function okey(){return `${cy}-${cm}`}
+function getOrdered(){
+  const wks=getWeeks(cy,cm),k=okey();
+  if(!wOrders[k]||wOrders[k].length!==wks.length) wOrders[k]=wks.map((_,i)=>i);
+  return wOrders[k].map(i=>wks[i]);
+}
+
+// ── Render ──
+function render(){
+  const lbl=`${MONTHS[cm].toUpperCase()} ${cy}`;
+  document.getElementById('mlbl').textContent=lbl;
+  document.getElementById('ptitle').textContent=lbl;
+  renderLeft();renderGrid();
+}
+function renderLeft(){
+  const el=document.getElementById('lnames');el.innerHTML='';
+  [...workers].sort().forEach(w=>{
+    const col=wc(w);
+    const d=document.createElement('div');
+    d.className='lname'+(mode==='names'?' candrag':'');d.dataset.name=w;
+    const bar=document.createElement('span');bar.className='lbar';bar.style.background=col;
+    const nt=document.createElement('span');nt.className='lntext';nt.textContent=w;
+    const sw=document.createElement('span');sw.className='lswatch';sw.style.background=col;sw.title='Cambiar color';
+    sw.addEventListener('click',e=>{e.stopPropagation();editWorkerColor(w)});
+    d.appendChild(bar);d.appendChild(nt);d.appendChild(sw);
+    if(mode==='names'){
+      d.draggable=true;
+      d.addEventListener('dragstart',e=>{drag={type:'name',name:w};d.classList.add('draggo');e.dataTransfer.effectAllowed='copy'});
+      d.addEventListener('dragend',()=>d.classList.remove('draggo'));
+    }
+    el.appendChild(d);
+  });
+}
+function renderGrid(){
+  const cp=document.getElementById('cpan');cp.innerHTML='';
+  const ordered=getOrdered();
+  ordered.forEach((wkDates,pos)=>{
+    if(mode==='weeks') cp.appendChild(mkDZ(pos));
+    cp.appendChild(mkWeek(wkDates,pos));
+  });
+  if(mode==='weeks') cp.appendChild(mkDZ(ordered.length));
+}
+function mkDZ(pos){
+  const dz=document.createElement('div');dz.className='dzw';dz.dataset.pos=pos;
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('on')});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('on'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('on');if(drag.type==='week') moveWeek(drag.posIdx,pos)});
+  return dz;
+}
+
+function mkWeek(dates,pos){
+  const letter=LETS[pos]||String(pos+1);
+  const counts={};dates.forEach(d=>(sched[d]||[]).forEach(n=>counts[n]=(counts[n]||0)+1));
+  const blk=document.createElement('div');blk.className='wblk';
+  if(mode==='weeks'){
+    blk.classList.add('wkdrag');blk.draggable=true;
+    blk.addEventListener('dragstart',e=>{drag={type:'week',posIdx:pos};blk.classList.add('dragging');e.dataTransfer.effectAllowed='move'});
+    blk.addEventListener('dragend',()=>blk.classList.remove('dragging'));
+  }
+  // Header
+  const hdr=document.createElement('div');hdr.className='whdr';
+  const lt=document.createElement('div');lt.className='wlet';lt.textContent=letter;hdr.appendChild(lt);
+  const rc=document.createElement('div');rc.className='rcbar';
+  const ns=Object.keys(counts).sort();
+  rc.innerHTML=ns.length?ns.map(n=>`<span class="rci">${n}: <span class="rcn">${counts[n]}</span></span>`).join(''):'<span class="rcnone">Sin descansos asignados</span>';
+  hdr.appendChild(rc);blk.appendChild(hdr);
+  // Table
+  const tbl=document.createElement('table');tbl.className='wtbl';
+  const thead=document.createElement('thead'),thr=document.createElement('tr');
+  dates.forEach((d,i)=>{
+    const dt=dp(d),isW=i>=5,isXM=dt.getMonth()!==cm;
+    const th=document.createElement('th');if(isW) th.classList.add('wknd');
+    th.innerHTML=`<span style="font-size:8px;display:block">${DAYS[i]}</span><span class="dn${isXM?' xm':''}">${dt.getDate()}</span>`;
+    thr.appendChild(th);
+  });
+  thead.appendChild(thr);tbl.appendChild(thead);
+  const tbody=document.createElement('tbody'),tr=document.createElement('tr');
+  dates.forEach((d,i)=>{
+    const dt=dp(d),isW=i>=5,isXM=dt.getMonth()!==cm;
+    const td=document.createElement('td');
+    if(isW) td.classList.add('wknd');if(isXM) td.classList.add('xmon');td.dataset.date=d;
+
+    // ── Chips (nombres asignados) ──
+    (sched[d]||[]).forEach((n,ni)=>{
+      const col=wc(n),txt=tc(col);
+      const chip=document.createElement('div');chip.className='aname';
+      chip.style.background=col;chip.style.color=txt;
+      const sp=document.createElement('span');sp.textContent=n;
+      const rm=document.createElement('span');rm.className='arm';rm.textContent='×';rm.style.color=txt;rm.title='Quitar';
+      rm.addEventListener('dragstart',e=>e.preventDefault()); // evitar drag desde ×
+      rm.addEventListener('click',e=>{e.stopPropagation();removeA(d,ni)});
+      chip.appendChild(sp);chip.appendChild(rm);
+
+      if(mode==='names'){
+        chip.classList.add('chip-drag');chip.draggable=true;
+        chip.addEventListener('dragstart',e=>{
+          e.stopPropagation();
+          drag={type:'name',name:n,fromDate:d,fromIdx:ni};
+          e.dataTransfer.effectAllowed='move';
+          setTimeout(()=>chip.style.opacity='0.25',0);
+        });
+        chip.addEventListener('dragend',()=>chip.style.opacity='1');
+        // El chip como drop target → intercambio
+        chip.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();chip.style.outline='2px solid #ffd060'});
+        chip.addEventListener('dragleave',()=>chip.style.outline='');
+        chip.addEventListener('drop',e=>{
+          e.preventDefault();e.stopPropagation();chip.style.outline='';
+          if(drag.type!=='name') return;
+          if(drag.fromDate){
+            // Chip del cuadrante → intercambiar posiciones
+            swapChips(drag.fromDate,drag.fromIdx,d,ni);
+          } else {
+            // Panel → añadir al día de este chip
+            addA(d,drag.name);
+          }
+        });
+      }
+      td.appendChild(chip);
+    });
+
+    // ── Celda como drop target ──
+    if(mode==='names'){
+      td.addEventListener('dragover',e=>{e.preventDefault();td.classList.add('dov')});
+      td.addEventListener('dragleave',()=>td.classList.remove('dov'));
+      td.addEventListener('drop',e=>{
+        e.preventDefault();td.classList.remove('dov');
+        if(drag.type!=='name') return;
+        if(drag.fromDate){
+          // Chip de cuadrante → mover al nuevo día
+          if(drag.fromDate!==d) moveChip(drag.fromDate,drag.fromIdx,d);
+        } else {
+          // Panel → añadir
+          addA(d,drag.name);
+        }
+      });
+    }
+    tr.appendChild(td);
+  });
+  tbody.appendChild(tr);tbl.appendChild(tbody);blk.appendChild(tbl);
+  return blk;
+}
+
+// ── Operaciones de datos ──
+function addA(date,name){
+  if(!sched[date]) sched[date]=[];
+  if(!sched[date].includes(name)){sched[date].push(name);renderGrid();}
+}
+function removeA(date,idx){
+  if(sched[date]){sched[date].splice(idx,1);renderGrid();}
+}
+function moveChip(fromDate,fromIdx,toDate){
+  // Mueve un chip de una fecha a otra
+  const arr=[...(sched[fromDate]||[])];
+  const name=arr[fromIdx];
+  if(!name) return;
+  arr.splice(fromIdx,1);
+  sched[fromDate]=arr;
+  if(!sched[toDate]) sched[toDate]=[];
+  if(!sched[toDate].includes(name)) sched[toDate].push(name);
+  renderGrid();
+}
+function swapChips(fromDate,fromIdx,toDate,toIdx){
+  // Intercambia dos chips entre sí
+  if(fromDate===toDate&&fromIdx===toIdx) return;
+  const fa=[...(sched[fromDate]||[])];
+  if(fromDate===toDate){
+    const tmp=fa[fromIdx];fa[fromIdx]=fa[toIdx];fa[toIdx]=tmp;
+    sched[fromDate]=fa;
+  } else {
+    const ta=[...(sched[toDate]||[])];
+    const fn=fa[fromIdx],tn=ta[toIdx];
+    fa[fromIdx]=tn;ta[toIdx]=fn;
+    sched[fromDate]=fa;sched[toDate]=ta;
+  }
+  renderGrid();
+}
+function moveWeek(from,toDZ){
+  const k=okey(),ord=[...wOrders[k]],item=ord[from];
+  ord.splice(from,1);let ins=toDZ;if(toDZ>from) ins=toDZ-1;
+  ord.splice(ins,0,item);wOrders[k]=ord;renderGrid();
+}
+
+// ── Navegación ──
+function chM(d){cm+=d;if(cm>11){cm=0;cy++;}if(cm<0){cm=11;cy--;}render()}
+function chY(d){cy+=d;render()}
+
+// ── Modo ──
+function setMode(m){
+  mode=mode===m?'':m;
+  document.getElementById('btnN').classList.toggle('on',mode==='names');
+  document.getElementById('btnW').classList.toggle('on',mode==='weeks');
+  const tips={
+    names:'Panel izq. → arrastra al día. Cuadrante → arrastra chips entre días o encima de otro para intercambiarlos.',
+    weeks:'Arrastra una semana completa para cambiar su posición en el cuadrante.',
+    '':"Activa un modo para editar el cuadrante."
+  };
+  document.getElementById('mtip').textContent=tips[mode]||tips[''];
+  render();
+}
+
+// ── Color de trabajador ──
+function editWorkerColor(name){colorEditWorker=name;const p=document.getElementById('cpick');p.value=wc(name);p.click()}
+function applyWorkerColor(val){if(colorEditWorker){workerColors[colorEditWorker]=val;colorEditWorker=null;renderLeft();renderGrid();}}
+
+// ── Modal ──
+const mbg=document.getElementById('mbg');
+mbg.addEventListener('click',e=>{if(e.target===mbg)closeM()});
+function closeM(){mbg.style.display='none';document.getElementById('mbox').style.width=''}
+function showM(html){document.getElementById('mbox').innerHTML=html;mbg.style.display='flex'}
+
+function openAdd(){
+  showM(`<h3>➕ Añadir Trabajador</h3>
+    <label class="mlabel">Nombre completo:</label>
+    <input id="ainp" type="text" placeholder="NOMBRE COMPLETO...">
+    <label class="mlabel">Color asignado:</label>
+    <div class="crow">
+      <input type="color" id="cinp" value="#FFC000" oninput="const p=document.getElementById('cpv');p.style.background=this.value;p.style.color=tc(this.value)">
+      <span id="cpv" class="cprev" style="background:#FFC000;color:#111">Vista previa</span>
+    </div>
+    <div class="mbtns">
+      <button class="mok" onclick="doAdd()">Añadir</button>
+      <button class="mcan" onclick="closeM()">Cancelar</button>
+    </div>`);
+  const inp=document.getElementById('ainp');
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')doAdd()});inp.focus();
+}
+function doAdd(){
+  const v=document.getElementById('ainp').value.trim().toUpperCase();
+  const col=document.getElementById('cinp').value;
+  if(!v){showToast('⚠ Escribe un nombre.');return}
+  if(workers.includes(v)){showToast('⚠ Ese nombre ya existe.');return}
+  workers.push(v);workerColors[v]=col;closeM();render();
+  showToast(`✅ ${v} añadido`);
+}
+
+// ── Eliminar: flujo en dos pasos (sin confirm()) ──
+function openRemove(){
+  const opts=[...workers].sort().map(w=>`<option value="${w}">${w}</option>`).join('');
+  showM(`<h3>🗑 Eliminar Trabajador</h3>
+    <select id="rsel" size="7">${opts}</select>
+    <div class="mbtns">
+      <button class="mok red" onclick="confirmRemove()">Continuar →</button>
+      <button class="mcan" onclick="closeM()">Cancelar</button>
+    </div>`);
+}
+function confirmRemove(){
+  const sel=document.getElementById('rsel'),v=sel.value;
+  if(!v){showToast('⚠ Selecciona un nombre de la lista.');return}
+  showM(`<h3>⚠ Confirmar eliminación</h3>
+    <p>¿Eliminar a <strong>${v}</strong> de la lista de trabajadores?<br>Los descansos ya asignados en el cuadrante <strong>no</strong> se borrarán.</p>
+    <div class="mbtns">
+      <button class="mok red" onclick="doRemove('${v.replace(/'/g,"\\'")}')">Sí, eliminar</button>
+      <button class="mcan" onclick="openRemove()">← Volver</button>
+    </div>`);
+}
+function doRemove(v){
+  workers=workers.filter(w=>w!==v);closeM();render();
+  showToast(`🗑 ${v} eliminado de la lista`);
+}
+
+// ── Guardar / Cargar ──
+async function doSave(){
+  const data={workers,workerColors,sched,wOrders,cy,cm};
+  try{
+    if(typeof window.storage==='undefined') throw new Error('Storage no disponible');
+    await window.storage.set('ribadesella-v1',JSON.stringify(data));
+    showToast('💾 Configuración guardada correctamente');
+  }catch(e){showToast('❌ Error al guardar: '+e.message);}
+}
+async function init(){
+  try{
+    if(typeof window.storage!=='undefined'){
+      const saved=await window.storage.get('ribadesella-v1');
+      if(saved&&saved.value){
+        const d=JSON.parse(saved.value);
+        if(d.workers) workers=d.workers;
+        if(d.workerColors) workerColors={...DCOLORS,...d.workerColors};
+        if(d.sched) sched=d.sched;
+        if(d.wOrders) wOrders=d.wOrders;
+        if(d.cy!==undefined) cy=d.cy;
+        if(d.cm!==undefined) cm=d.cm;
+      }
+    }
+  }catch(e){/* Sin datos guardados */}
+  render();
+}
+
+// ── Descargar Excel ──
+function downloadExcel(){
+  if(typeof XLSX==='undefined'){showToast('⚠ Librería XLSX no cargada');return}
+  const wb=XLSX.utils.book_new(),aoa=[],merges=[];let row=0;
+  const mname=MONTHS[cm].toUpperCase();
+  aoa.push([`CUADRANTE DE DESCANSOS — ${mname} ${cy}`,'','','','','','','']);
+  merges.push({s:{r:row,c:0},e:{r:row,c:7}});row++;
+  aoa.push(['LIMPIEZA RIBADESELLA • FCC DE RIBADESELLA','','','','','','','']);
+  merges.push({s:{r:row,c:0},e:{r:row,c:7}});row++;
+  aoa.push([]);row++;
+  getOrdered().forEach((dates,pos)=>{
+    const letter=LETS[pos]||String(pos+1);
+    const counts={};dates.forEach(d=>(sched[d]||[]).forEach(n=>counts[n]=(counts[n]||0)+1));
+    const cstr=Object.keys(counts).sort().map(n=>`${n}: ${counts[n]}`).join('   |   ');
+    aoa.push([`SEMANA ${letter}`,cstr,'','','','','','']);merges.push({s:{r:row,c:1},e:{r:row,c:7}});row++;
+    aoa.push(['',...DAYS]);row++;
+    const nums=dates.map(d=>{const dt=dp(d);return dt.getMonth()!==cm?`(${dt.getDate()})`:dt.getDate()});
+    aoa.push(['',...nums]);row++;
+    const maxN=Math.max(...dates.map(d=>(sched[d]||[]).length),1);
+    for(let i=0;i<maxN;i++){const r=[''];dates.forEach(d=>r.push((sched[d]||[])[i]||''));aoa.push(r);row++;}
+    aoa.push([]);row++;
+  });
+  const ws=XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges']=merges;
+  ws['!cols']=[{wch:14},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17}];
+  XLSX.utils.book_append_sheet(wb,ws,`${MONTHS[cm].slice(0,3).toUpperCase()} ${cy}`);
+  XLSX.writeFile(wb,`Descansos_Ribadesella_${mname}_${cy}.xlsx`);
+  showToast('⬇ Excel descargado correctamente');
+}
+
+// ── Toast ──
+function showToast(msg,dur=2800){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── Validación del cuadrante ──
+function validateSchedule(){
+  const ordWeeks=getOrdered();
+  const result=[];
+  [...workers].sort().forEach(w=>{
+    const probs=[];
+    // Contar descansos por semana
+    const counts=ordWeeks.map(dates=>{
+      let c=0;
+      dates.forEach(d=>(sched[d]||[]).forEach(n=>{if(n===w) c++;}));
+      return c;
+    });
+    const total=counts.reduce((a,b)=>a+b,0);
+
+    if(total===0){
+      // Trabajador sin ningún descanso en el mes
+      probs.push('Sin ningún descanso asignado en el mes completo.');
+    } else {
+      // Revisar cada semana individualmente
+      counts.forEach((c,wi)=>{
+        const L=LETS[wi]||String(wi+1);
+        if(c===0){
+          probs.push(`Semana ${L}: no tiene descanso asignado.`);
+        } else if(c>2){
+          probs.push(`Semana ${L}: tiene ${c} descansos asignados (máximo esperado: 2).`);
+        }
+      });
+      // Comprobar alternancia 1↔2 entre semanas consecutivas
+      for(let i=0;i<counts.length-1;i++){
+        const a=counts[i],b=counts[i+1];
+        if((a===1||a===2)&&(b===1||b===2)&&a===b){
+          const La=LETS[i]||String(i+1), Lb=LETS[i+1]||String(i+2);
+          probs.push(`Semanas ${La}→${Lb}: ${a} descanso${a>1?'s':''} en ambas — debe alternar 1↔2.`);
+        }
+      }
+    }
+    if(probs.length) result.push({w, col:wc(w), txt:tc(wc(w)), probs});
+  });
+  return result;
+}
+
+function validateAndSave(){
+  const issues=validateSchedule();
+  // Sin incidencias → guardar directamente
+  if(!issues.length){doSave();return;}
+
+  // Con incidencias → ventana informativa
+  const month=`${MONTHS[cm].toUpperCase()} ${cy}`;
+  const rows=issues.map(({w,col,txt,probs})=>
+    `<div class="val-row">
+       <span class="val-badge" style="background:${col};color:${txt}">${w}</span>
+       <div class="val-probs">${probs.map(p=>`<div class="val-prob">${p}</div>`).join('')}</div>
+     </div>`
+  ).join('');
+
+  document.getElementById('mbox').style.width='450px';
+  showM(`<h3>⚠ Validación del cuadrante — ${month}</h3>
+    <div class="val-sum">
+      Se han detectado incidencias en <strong>${issues.length} trabajador${issues.length>1?'es':''}</strong>.<br>
+      Reglas: cada trabajador debe tener 1 ó 2 descansos por semana alternando (1↔2) y aparecer en todas las semanas del mes.
+    </div>
+    <div class="val-scroll">${rows}</div>
+    <div class="mbtns" style="margin-top:12px">
+      <button class="mok" onclick="doSave();closeM()">Guardar igualmente</button>
+      <button class="mcan" onclick="closeM()">← Revisar</button>
+    </div>`);
+}
+
+init();
+</script>
+</body>
+</html>
