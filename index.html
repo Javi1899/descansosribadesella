@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Descansos de Ribadesella</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;font-size:11px;background:#dde3ea}
@@ -364,7 +364,6 @@ function removeA(date,idx){
   if(sched[date]){sched[date].splice(idx,1);renderGrid();}
 }
 function moveChip(fromDate,fromIdx,toDate){
-  // Mueve un chip de una fecha a otra
   const arr=[...(sched[fromDate]||[])];
   const name=arr[fromIdx];
   if(!name) return;
@@ -375,7 +374,6 @@ function moveChip(fromDate,fromIdx,toDate){
   renderGrid();
 }
 function swapChips(fromDate,fromIdx,toDate,toIdx){
-  // Intercambia dos chips entre sí
   if(fromDate===toDate&&fromIdx===toIdx) return;
   const fa=[...(sched[fromDate]||[])];
   if(fromDate===toDate){
@@ -500,34 +498,126 @@ async function init(){
   render();
 }
 
-// ── Descargar Excel ──
-function downloadExcel(){
-  if(typeof XLSX==='undefined'){showToast('⚠ Librería XLSX no cargada');return}
-  const wb=XLSX.utils.book_new(),aoa=[],merges=[];let row=0;
+// ── Descargar Excel (maquetado fiel a ESPECIFICACION_MAQUETADO_DESCANSOS.md) ──
+async function downloadExcel(){
+  if(typeof ExcelJS==='undefined'){showToast('⚠ Librería ExcelJS no cargada');return}
+  showToast('⏳ Generando Excel…');
   const mname=MONTHS[cm].toUpperCase();
-  aoa.push([`CUADRANTE DE DESCANSOS — ${mname} ${cy}`,'','','','','','','']);
-  merges.push({s:{r:row,c:0},e:{r:row,c:7}});row++;
-  aoa.push(['LIMPIEZA RIBADESELLA • FCC DE RIBADESELLA','','','','','','','']);
-  merges.push({s:{r:row,c:0},e:{r:row,c:7}});row++;
-  aoa.push([]);row++;
+  const wb=new ExcelJS.Workbook();
+  const sheet=wb.addWorksheet(`${MONTHS[cm].slice(0,3).toUpperCase()} ${cy}`,{
+    views:[{showGridLines:false,state:'frozen',xSplit:0,ySplit:3,topLeftCell:'A4'}]
+  });
+  sheet.pageSetup.orientation='landscape';
+  sheet.pageSetup.fitToPage=true;
+  sheet.pageSetup.fitToWidth=1;
+  sheet.pageSetup.fitToHeight=1;
+  sheet.pageSetup.printTitlesRow='1:2';
+  sheet.getColumn(1).width=15;
+  for(let c=2;c<=8;c++) sheet.getColumn(c).width=21;
+
+  const argb=h=>'FF'+h.replace('#','');
+  const border={style:'thin',color:{argb:argb('AEC6DF')}};
+  const allB={top:border,left:border,bottom:border,right:border};
+  const setCell=(cell,{fill,font,h='center',v='middle',wrap=false,indent=0,bd=true})=>{
+    if(fill) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(fill)}};
+    cell.font={name:'Calibri',...font};
+    cell.alignment={horizontal:h,vertical:v,wrapText:wrap,indent};
+    if(bd) cell.border=allB;
+  };
+  const styleRow=(row,opts)=>{for(let c=1;c<=8;c++) setCell(row.getCell(c),opts);};
+
+  // Fila 1 — Título
+  let r1=sheet.addRow(['CUADRANTE DE DESCANSOS — '+mname+' '+cy,'','','','','','','']);
+  sheet.mergeCells(`A${r1.number}:H${r1.number}`);
+  styleRow(r1,{fill:'BBDEFB',font:{size:18,bold:true,color:{argb:argb('0D3B66')}}});
+  r1.height=30;
+
+  // Fila 2 — Subtítulo
+  let r2=sheet.addRow(['LIMPIEZA RIBADESELLA • FCC DE RIBADESELLA','','','','','','','']);
+  sheet.mergeCells(`A${r2.number}:H${r2.number}`);
+  styleRow(r2,{fill:'E3F2FD',font:{size:12,bold:true,color:{argb:argb('1B3A5C')}}});
+  r2.height=22;
+
+  // Fila 3 — Separador
+  let r3=sheet.addRow(['','','','','','','','']);
+  styleRow(r3,{fill:'FFFFFF',font:{size:9},bd:false});
+  r3.height=8;
+
+  const palette=[
+    {lb:'BBDEFB',lt:'0D47A1',sb:'E8F2FC',st:'1B3A5C'},
+    {lb:'C8E6C9',lt:'1B5E20',sb:'EDF7ED',st:'21502B'},
+    {lb:'FFE0B2',lt:'9C5700',sb:'FFF6E5',st:'7A5008'},
+    {lb:'E1BEE7',lt:'6A1B9A',sb:'F6EDFA',st:'5C2A7A'},
+    {lb:'F8BBD0',lt:'AD1457',sb:'FDEFF4',st:'8C3457'}
+  ];
+
   getOrdered().forEach((dates,pos)=>{
     const letter=LETS[pos]||String(pos+1);
+    const pal=palette[pos%5];
     const counts={};dates.forEach(d=>(sched[d]||[]).forEach(n=>counts[n]=(counts[n]||0)+1));
-    const cstr=Object.keys(counts).sort().map(n=>`${n}: ${counts[n]}`).join('   |   ');
-    aoa.push([`SEMANA ${letter}`,cstr,'','','','','','']);merges.push({s:{r:row,c:1},e:{r:row,c:7}});row++;
-    aoa.push(['',...DAYS]);row++;
-    const nums=dates.map(d=>{const dt=dp(d);return dt.getMonth()!==cm?`(${dt.getDate()})`:dt.getDate()});
-    aoa.push(['',...nums]);row++;
+    const names=Object.keys(counts).sort();
+    const summary=names.length?names.map(n=>`${n}: ${counts[n]}`).join('   |   '):'Sin descansos asignados';
+
+    // Grupo 1 — etiqueta + resumen
+    let gr=sheet.addRow(['SEMANA '+letter,summary,'','','','','','']);
+    sheet.mergeCells(`B${gr.number}:H${gr.number}`);
+    setCell(gr.getCell(1),{fill:pal.lb,font:{size:11,bold:true,color:{argb:argb(pal.lt)}}});
+    for(let c=2;c<=8;c++) setCell(gr.getCell(c),{fill:pal.sb,font:{size:9.5,italic:true,color:{argb:argb(pal.st)}},h:'left',wrap:true,indent:1});
+    const lines=Math.ceil(summary.length/130)||1;
+    gr.height=16+(lines-1)*13;
+
+    // Grupo 2 — cabecera de días
+    let dr=sheet.addRow(['',...DAYS]);
+    setCell(dr.getCell(1),{fill:'DCE7F2',font:{size:10}});
+    for(let c=2;c<=8;c++) setCell(dr.getCell(c),{fill:'DCE7F2',font:{size:10.5,bold:true,color:{argb:argb('1B3A5C')}}});
+    dr.height=20;
+
+    // Grupo 3 — números de día
+    const nums=dates.map(d=>{const dt=dp(d);return dt.getMonth()!==cm?`(${dt.getDate()})`:String(dt.getDate())});
+    let nr=sheet.addRow(['',...nums]);
+    setCell(nr.getCell(1),{fill:'F2F6FA',font:{size:10}});
+    nums.forEach((val,i)=>{
+      const isOv=val.startsWith('(');
+      setCell(nr.getCell(i+2),{fill:'F2F6FA',font:{size:12,bold:true,italic:isOv,color:{argb:argb(isOv?'90A4AE':'37474F')}}});
+    });
+    nr.height=20;
+
+    // Grupo 4 — fila(s) de nombres
     const maxN=Math.max(...dates.map(d=>(sched[d]||[]).length),1);
-    for(let i=0;i<maxN;i++){const r=[''];dates.forEach(d=>r.push((sched[d]||[])[i]||''));aoa.push(r);row++;}
-    aoa.push([]);row++;
+    for(let i=0;i<maxN;i++){
+      const altFill=i%2===0?'FFFFFF':'F3F8FC';
+      const rowVals=['',...dates.map(d=>(sched[d]||[])[i]||'')];
+      let nmr=sheet.addRow(rowVals);
+      setCell(nmr.getCell(1),{fill:altFill,font:{size:9.5}});
+      for(let c=2;c<=8;c++){
+        const has=!!nmr.getCell(c).value;
+        setCell(nmr.getCell(c),{fill:altFill,font:{size:9.5,bold:has,color:{argb:argb('263238')}},wrap:true});
+      }
+      nmr.height=30;
+    }
+
+    // Separador final del bloque
+    let sr=sheet.addRow(['','','','','','','','']);
+    styleRow(sr,{fill:'FFFFFF',font:{size:9},bd:false});
+    sr.height=6;
   });
-  const ws=XLSX.utils.aoa_to_sheet(aoa);
-  ws['!merges']=merges;
-  ws['!cols']=[{wch:14},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17},{wch:17}];
-  XLSX.utils.book_append_sheet(wb,ws,`${MONTHS[cm].slice(0,3).toUpperCase()} ${cy}`);
-  XLSX.writeFile(wb,`Descansos_Ribadesella_${mname}_${cy}.xlsx`);
-  showToast('⬇ Excel descargado correctamente');
+
+  // Pie de página
+  let fr=sheet.addRow(['Web de Javi: _TJ  ·  LIMPIEZA RIBADESELLA  ·  FCC MEDIO AMBIENTE, S.A.U.','','','','','','','']);
+  sheet.mergeCells(`A${fr.number}:H${fr.number}`);
+  styleRow(fr,{fill:'ECEFF1',font:{size:9,italic:true,color:{argb:argb('607D8B')}}});
+  fr.height=18;
+
+  try{
+    const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/octet-stream'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=`Descansos_Ribadesella_${mname}_${cy}.xlsx`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('⬇ Excel descargado correctamente');
+  }catch(e){showToast('❌ Error al generar Excel: '+e.message);}
 }
 
 // ── Toast ──
@@ -558,7 +648,6 @@ function validateSchedule(){
   const result=[];
   [...workers].sort().forEach(w=>{
     const probs=[];
-    // Contar descansos por semana
     const counts=ordWeeks.map(dates=>{
       let c=0;
       dates.forEach(d=>(sched[d]||[]).forEach(n=>{if(n===w) c++;}));
@@ -567,10 +656,8 @@ function validateSchedule(){
     const total=counts.reduce((a,b)=>a+b,0);
 
     if(total===0){
-      // Trabajador sin ningún descanso en el mes
       probs.push('Sin ningún descanso asignado en el mes completo.');
     } else {
-      // Revisar cada semana individualmente
       counts.forEach((c,wi)=>{
         const L=LETS[wi]||String(wi+1);
         if(c===0){
@@ -579,7 +666,6 @@ function validateSchedule(){
           probs.push(`Semana ${L}: tiene ${c} descansos asignados (máximo esperado: 2).`);
         }
       });
-      // Comprobar alternancia 1↔2 entre semanas consecutivas
       for(let i=0;i<counts.length-1;i++){
         const a=counts[i],b=counts[i+1];
         if((a===1||a===2)&&(b===1||b===2)&&a===b){
@@ -595,10 +681,8 @@ function validateSchedule(){
 
 function validateAndSave(){
   const issues=validateSchedule();
-  // Sin incidencias → guardar directamente
   if(!issues.length){doSave();return;}
 
-  // Con incidencias → ventana informativa
   const month=`${MONTHS[cm].toUpperCase()} ${cy}`;
   const rows=issues.map(({w,col,txt,probs})=>
     `<div class="val-row">
