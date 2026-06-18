@@ -45,6 +45,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;fo
 .rb-dl{background:#1a7a4a;color:#fff}.rb-dl:hover{background:#22965a}
 .rb-tog{background:#aab5c0;color:#fff}
 .rb-tog.on{background:#d06515;box-shadow:0 0 0 2px #f09030}
+.rb-info{background:#0d8a8a;color:#fff}.rb-info:hover{background:#11a8a8}.rb-info.on{background:#b83428;box-shadow:0 0 0 2px #e2574a}
 .mtip{font-size:8.5px;color:#80a0b8;line-height:1.55;padding:5px;background:#e8eef5;border-radius:4px}
 /* WEEK */
 .wblk{background:#fff;border:1px solid #c2ccd6;border-radius:6px;margin-bottom:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07);transition:box-shadow .15s}
@@ -152,6 +153,7 @@ html,body{height:100%;overflow:hidden;font-family:'Segoe UI',Arial,sans-serif;fo
     <button class="rbtn rb-red"  onclick="openRemove()">🗑 Eliminar Nombre</button>
     <button class="rbtn rb-save" onclick="validateAndSave()">💾 Guardar</button>
     <button class="rbtn rb-dl"   onclick="downloadExcel()">⬇ Descargar</button>
+    <button class="rbtn rb-info" id="btnInfo" onclick="toggleInfo()">🔊 INFORMACIÓN</button>
     <div class="rsec">Modos de Edición</div>
     <button class="rbtn rb-tog" id="btnN" onclick="setMode('names')">🖱 Arrastrar Nombres</button>
     <button class="rbtn rb-tog" id="btnW" onclick="setMode('weeks')">↕ Mover Semanas</button>
@@ -532,6 +534,22 @@ function downloadExcel(){
 function showToast(msg,dur=2800){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+// ── Información hablada (tutorial) ──
+function toggleInfo(){
+  const btn=document.getElementById('btnInfo'),synth=window.speechSynthesis;
+  if(synth.speaking||synth.pending){synth.cancel();btn.classList.remove('on');btn.textContent='🔊 INFORMACIÓN';return;}
+  const text="¡Vamos a crear los descansos! Te explico cómo funciona el artefacto. En el panel de la izquierda tienes el listado de trabajadores; cada uno tiene un círculo de color que puedes pulsar para cambiarlo cuando quieras. Para asignar un descanso, activa primero el botón Arrastrar Nombres, en la zona de modos de edición, y después arrastra un nombre desde el panel izquierdo hasta el día del cuadrante donde quieras colocarlo. Si ya tienes un descanso puesto y quieres moverlo, arrástralo de una celda a otra, o suéltalo encima de otro nombre para intercambiar sus posiciones. Para eliminar un descanso, pulsa la pequeña cruz que aparece junto al nombre dentro de la celda. Si necesitas cambiar el orden de las semanas completas, activa el botón Mover Semanas y arrastra el bloque entero a la posición que prefieras. Con los botones Añadir Nombre y Eliminar Nombre puedes gestionar la lista de trabajadores en cualquier momento. El botón Guardar revisa que cada trabajador tenga uno o dos descansos por semana, alternando correctamente, y guarda toda la configuración. El botón Descargar genera un archivo Excel con el cuadrante completo, listo para imprimir o compartir. Por último, usa las flechas de la parte superior para moverte entre meses y años. Y con esto, ya puedes empezar a organizar los descansos.";
+  const utt=new SpeechSynthesisUtterance(text);
+  utt.lang='es-ES';
+  const pick=()=>{const vs=synth.getVoices();const v=vs.find(x=>x.lang==='es-ES')||vs.find(x=>x.lang&&x.lang.startsWith('es'));if(v)utt.voice=v;};
+  pick();
+  if(!utt.voice) synth.onvoiceschanged=pick;
+  utt.onend=()=>{btn.classList.remove('on');btn.textContent='🔊 INFORMACIÓN';};
+  utt.onerror=()=>{btn.classList.remove('on');btn.textContent='🔊 INFORMACIÓN';};
+  btn.classList.add('on');btn.textContent='⏹ DETENER';
+  synth.speak(utt);
 }
 
 // ── Validación del cuadrante ──
